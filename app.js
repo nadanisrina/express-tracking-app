@@ -1,9 +1,11 @@
+require('dotenv').config()
 const express = require('express')
 const bodyParser = require('body-parser')
 
 const placesRoutes = require('./src/routes/place-routes')
 const userRoutes = require('./src/routes/authRoutes')
 const HttpError = require('./src/models/http-error')
+const { default: mongoose } = require('mongoose')
 
 const app = express()
 
@@ -20,6 +22,14 @@ app.use((error, req, res, next) => {
     res.status(error.code || 500)
     res.json({ message: error.message || 'An unknown error occured!' })
 })
+mongoose
+    .connect(`mongodb+srv://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@cluster0.6whqr.mongodb.net/places?retryWrites=true&w=majority`)
+    .then(() => {
+        app.listen(4000);
+    })
+    .catch(err => {
+        console.log("err",err)
+    })
 //if there is unknown route 
 app.use((error, req, res, next)=> {
     const error404 = new HttpError('Could not find this route.', 404);
@@ -30,7 +40,7 @@ app.use((error, req, res, next)=> {
 //query param
 app.use(bodyParser.urlencoded({ extended: false }))
 
-app.listen(4000)
+// app.listen(4000)
 //bisa digantikan dengan body parser
 // app.use((req, res, next) => {
 //     let body = "";

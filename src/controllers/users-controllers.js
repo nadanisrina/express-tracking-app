@@ -1,3 +1,4 @@
+const { validationResult } = require('express-validator')
 const uuid = require('uuid')
 const HttpError = require('../models/http-error')
 let DUMMY_USERS = [
@@ -37,6 +38,13 @@ const login = (req,res,next) => {
 }
 
 const signup = (req,res,next) => {
+    const error = validationResult(req);
+    if(!error.isEmpty()){
+        throw new HttpError('Data could not be Empty',422)
+    }
+    if(!error.isEmpty()){
+        throw new HttpError('Data could not be Empty',422)
+    }
     const { name, email, password } = req.body
     const createUser = {
         id: uuid.v4(),
