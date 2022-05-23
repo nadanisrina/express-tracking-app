@@ -30,6 +30,13 @@ mongoose
     .catch(err => {
         console.log("err",err)
     })
+    //virtualize id
+mongoose.set('toJSON', {
+    virtuals: true,
+    transform: (doc, converted) => {
+        delete converted._id;
+    }
+    });
 //if there is unknown route 
 app.use((error, req, res, next)=> {
     const error404 = new HttpError('Could not find this route.', 404);

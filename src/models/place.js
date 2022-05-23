@@ -12,4 +12,10 @@ const placeSchema = new Schema({
     creator: { type: String, required: true },
 });
 const Place = mongoose.model('Place', placeSchema);
+//virtualize id each schema
+// placeSchema.set('toJSON', {
+//     virtuals: true,
+//     versionKey:false,
+//     transform: function (doc, ret) {   delete ret._id  }
+// });
 module.exports = Place
