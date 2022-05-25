@@ -3,6 +3,8 @@ const uuid = require('uuid')
 const { validationResult } = require('express-validator')
 const getCoordinates = require('../util/location')
 const Place = require('../models/place')
+const { default: mongoose } = require('mongoose')
+const User = require('../models/User')
 let DUMMY_PLACES = [
     {
         id: 'p1',
@@ -72,7 +74,7 @@ const getPlacesByUserId = async (req, res, next) => {
         places = await Place.find({creator : userId}).exec();
     } catch (error) {
         const err = new HttpError(
-            'Something went wrong, could not find a place', 500
+            'Something went wrong, could not find a place with user id given.', 500
         );
         return next(err)
     }
@@ -113,9 +115,25 @@ const createPlace = async (req, res, next) => {
         address: address,
         creator: creator
     })
+    let user;
+
+    try{
+        user = await User.findById(creator).exec();
+        console.log("user", user)
+        if(!user){
+            return next(new HttpError('Creating user with provided id, please try again', 404))
+        }
+    }catch (err) {
+        return next(new HttpError('Creating place failed, please try again', 500))
+    }
 
     try {
+        const sess = await mongoose.startSession();
+        sess.startTransaction();
         await createdPlace.save();     
+        user.places.push(createdPlace);
+        await user.save({ session: sess });
+        await sess.commitTransaction();
     } catch (err) {
         const error = new HttpError('Creating place failed, please try again.',500)
         return next(error);
@@ -123,16 +141,29 @@ const createPlace = async (req, res, next) => {
     res.status(201).json({place: createdPlace, message: 'success create a place.'})
 } 
 
-const updatePlaceById = (req, res, next) => {
+const updatePlaceById = async(req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        throw new HttpError('Invalid input passed, please check your data.', 422)
+    }
     const { title, desc } = req.body
-    const { placeId } = req.params
-    const updatedData = { ...DUMMY_PLACES.find(item => item.id === placeId) }
-    updatedData.title = title;
-    updatedData.desc = desc;
-    const idPlace = DUMMY_PLACES.findIndex(item => item.id === placeId);
-    DUMMY_PLACES[idPlace] = updatedData;
+    const { pid } = req.params
+    let place;
+    try {
+        place = await Place.findById(pid).exec()
+    } catch (err) {
+        return next(new HttpError('Something went wrong, could not find place', 500))
+    }
+    place.title = title;
+    place.description = desc;
+    console.log("place", place)
+    try {
+        await place.save();
+    } catch (error) {
+        return next(new HttpError('Something went wrong, could not update place', 500))
+    }
 
-    res.status(200).json({place : DUMMY_PLACES})
+    res.status(200).json({place : place})
 
 }
 

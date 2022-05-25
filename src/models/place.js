@@ -9,7 +9,7 @@ const placeSchema = new Schema({
         long : { type: Number, required: true },
      },
     address: { type: String, required: true },
-    creator: { type: String, required: true },
+    creator: { type: mongoose.Types.ObjectId, required: true, ref: 'User' },
 });
 const Place = mongoose.model('Place', placeSchema);
 //virtualize id each schema
