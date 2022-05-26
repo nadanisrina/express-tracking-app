@@ -16,6 +16,8 @@ app.use('/api/places',placesRoutes); // => /api/places/
 app.use('/api/users',userRoutes); // => /api/places/
 //error handling
 app.use((error, req, res, next) => {
+    // console.log("res", res)
+    // console.log("error", error)
     if(res.headerSent){
         return(next(error))
     }

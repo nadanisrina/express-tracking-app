@@ -1,63 +1,90 @@
 const { validationResult } = require('express-validator')
 const uuid = require('uuid')
 const HttpError = require('../models/http-error')
+const User = require('../models/User')
 let DUMMY_USERS = [
     {
-        id: 'u1',
+        id: uuid.v4(),
         name: "nada",
         email: "nisrina@gmail.com",
         password: "aaaa"
     },
     {
-        id: 'u2',
+        id: uuid.v4(),
         name: "user2",
         email: "user2@gmail.com",
         password: "user2"
     },
     {
-        id: 'u3',
+        id: uuid.v4(),
         name: "user3",
         email: "user3@gmail.com",
         password: "user3"
     }
 ]
-const getUsers = (req,res,next) => {
-    res.json(DUMMY_USERS)
+const getUsers = async(req,res,next) => {
+    let users;
+    try {
+        users = await User.find({}, '-password');
+    } catch (error) {
+        return next(new HttpError('Fetching users failed, please try again later.', 500))
+    }
+    res.status(200).json({users : users })
 }
 
-const login = (req,res,next) => {
+const login = async(req,res,next) => {
     const {email, password} = req.body
 
-    let identifiedUser = DUMMY_USERS.find(item => item.email === email)
-    if(!identifiedUser || identifiedUser.password !== password){
-        return next(new HttpError('Could not find user',404));
+    let existingUser 
+    try {
+        existingUser = await User.findOne({ email: email });
+    } catch (error) {
+        return next(new HttpError('Sign up failed, please try again later', 500))
+    }
+
+    if(!existingUser || existingUser.password !== password){
+        return next(new HttpError('User Not Found. please sign up first.', 422))
     }
 
     res.json({ message: 'Logged in!' })
 
 }
 
-const signup = (req,res,next) => {
+const signup = async (req,res,next) => {
     const error = validationResult(req);
     if(!error.isEmpty()){
-        throw new HttpError('Data could not be Empty',422)
+        return next(new HttpError('Data could not be Empty',422))
     }
-    if(!error.isEmpty()){
-        throw new HttpError('Data could not be Empty',422)
-    }
+    
     const { name, email, password } = req.body
-    const createUser = {
-        id: uuid.v4(),
+
+    let existingUser 
+    try {
+        existingUser = await User.findOne({ email: email });
+    } catch (error) {
+        return next(new HttpError('Sign up failed, please try again later', 500))
+    }
+
+    if(existingUser){
+        return next(new HttpError('User Already exist. please login instead.', 422))
+    }
+    const createUser = new User({
         name,
         email,
-        password
-    }
-    if(DUMMY_USERS.find(u => u.email === email)){
-        return next(new HttpError('Email already been used',422));
-    }
-    DUMMY_USERS.push(createUser)
+        image: "https://www.gooasalkasdjklasds.com",
+        password,
+        places: []
+    })
 
-    res.json(createUser) 
+    console.log("createUser", createUser)
+
+   try {
+       await createUser.save();
+   } catch (error) {
+       next(new HttpError('Could not create user', 500))
+   }
+   res.status(201).json({place: createUser, message: 'success create a user.'})
+
 }
 
 exports.getUsers = getUsers;

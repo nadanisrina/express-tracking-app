@@ -3,7 +3,7 @@ const uuid = require('uuid')
 const { validationResult } = require('express-validator')
 const getCoordinates = require('../util/location')
 const Place = require('../models/place')
-const { default: mongoose } = require('mongoose')
+const mongoose  = require('mongoose')
 const User = require('../models/User')
 let DUMMY_PLACES = [
     {
@@ -65,33 +65,32 @@ const getPlaceById = async (req, res, next) => {
 
     res.json({ place: place }); // => { place } => { place: place }
 }
-const getPlacesByUserId = async (req, res, next) => {
-    const userId = req.params.uid
 
-    let places;
-    
+
+const getPlaceByUserId = async (req, res, next) => {
+    const userId = req.params.uid;
+    // let place;
+    let userWithPlaces
+
     try {
-        places = await Place.find({creator : userId}).exec();
+        userWithPlaces = await User.findById(userId).populate('places')
+        // place = await Place.findById(placeId).populate('creator')
     } catch (error) {
         const err = new HttpError(
-            'Something went wrong, could not find a place with user id given.', 500
+            'Something went wrong, could not find a place', 500
         );
         return next(err)
     }
 
-    if(!places || places.length === 0){
+     if(!userWithPlaces || userWithPlaces.places.length === 0){
         return next(new HttpError('Could not find a place for the provided user id.',404));
-
     }
 
     // if(!place){
-    //     // res.status(404).json({ message: 'Could not find a place for the provided id.' })
-    //     const error = new Error ('Could not find a place for the provided user id.');
-    //     error.code = 404;
-    //     return next(error)
+    //     return res.status(404).json({ message : 'Could not find a place for the provided id.' })
     // }
 
-    res.json({ place: places })
+    res.json({ place: userWithPlaces.places.map(place => place) }); // => { place } => { place: place }
 }
 
 const createPlace = async (req, res, next) => {
@@ -119,24 +118,24 @@ const createPlace = async (req, res, next) => {
 
     try{
         user = await User.findById(creator).exec();
-        console.log("user", user)
         if(!user){
-            return next(new HttpError('Creating user with provided id, please try again', 404))
+            return next(new HttpError('Cannot find user id ', 404))
         }
     }catch (err) {
-        return next(new HttpError('Creating place failed, please try again', 500))
+        return next(new HttpError('Creating user with provided id, please try again', 500))
     }
+
+    console.log("user333", user.places)
 
     try {
         const sess = await mongoose.startSession();
         sess.startTransaction();
-        await createdPlace.save();     
+        await createdPlace.save({ session: sess });     
         user.places.push(createdPlace);
         await user.save({ session: sess });
         await sess.commitTransaction();
     } catch (err) {
-        const error = new HttpError('Creating place failed, please try again.',500)
-        return next(error);
+        return next(new HttpError('Creating place failed, please try again.',500));
     }
     res.status(201).json({place: createdPlace, message: 'success create a place.'})
 } 
@@ -154,9 +153,9 @@ const updatePlaceById = async(req, res, next) => {
     } catch (err) {
         return next(new HttpError('Something went wrong, could not find place', 500))
     }
+
     place.title = title;
     place.description = desc;
-    console.log("place", place)
     try {
         await place.save();
     } catch (error) {
@@ -167,17 +166,28 @@ const updatePlaceById = async(req, res, next) => {
 
 }
 
-const deletePlaceById = (req, res, next) => {
-    const { placeId } = req.params
-    const idPlace = DUMMY_PLACES.findIndex(item => item.id === placeId);
-    DUMMY_PLACES.splice(idPlace,1)
+const deletePlaceById = async (req, res, next) => {
+    const { pid } = req.params
+    
+    let place;
+    try{
+        place = await Place.findById(pid);
+    }catch(err){
+        return next(new HttpError('Something went wrong', 500))
+    }
 
-    res.status(200).json({place : DUMMY_PLACES})
+    try {
+        place.remove()
+    } catch (error) {
+        return next(new HttpError('Something went wrong, could not delete place', 500))
+    }
+
+    res.status(200).json({message : `Success delete place with id ${pid}`})
 }
 
 exports.getAll = getAll;
 exports.getPlaceById = getPlaceById;
-exports.getPlacesByUserId = getPlacesByUserId;
+exports.getPlaceByUserId = getPlaceByUserId;
 exports.createPlace = createPlace;
 exports.updatePlaceById = updatePlaceById;
 exports.deletePlaceById = deletePlaceById;

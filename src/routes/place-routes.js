@@ -8,7 +8,7 @@ router.get('/', placeController.getAll)
 
 router.get('/:pid', placeController.getPlaceById)
 
-router.get('/user/:uid', placeController.getPlacesByUserId)
+router.get('/user/:uid', placeController.getPlaceByUserId)
 
 router.post('/', 
     [check('title').not().isEmpty(),
